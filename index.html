@@ -223,7 +223,8 @@ body.tyon>:not(#ty):not(#c){display:none!important}
 .tyTop{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .tyTop>button{background:rgba(255,255,255,.7);border:1px solid #dcdcd7;color:#4b525a;border-radius:999px;padding:7px 14px;font-size:13px}
 .tySeg{display:flex;background:rgba(255,255,255,.7);border:1px solid #dcdcd7;border-radius:999px;padding:3px}.tySeg button{border:0;background:none;color:#7a8089;padding:5px 12px;border-radius:999px;font-size:12.5px}.tySeg button.on{background:#2d5bb3;color:#fff}
-.tyTxt{position:absolute;left:0;right:0;top:60%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 16px}
+.tyStage{flex:1 1 auto;min-height:90px;width:100%;margin-top:56px}
+.tyTxt{flex:none;width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 16px}
 .tyTxt.in{animation:tyIn .45s cubic-bezier(.2,.8,.2,1)}@keyframes tyIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
 .tyLab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9aa0a8;margin-bottom:6px}
 .tyW{font:400 clamp(30px,5.6vw,54px)/1.15 'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;letter-spacing:.005em;min-height:1.15em;word-break:break-word;max-width:94vw}
@@ -236,13 +237,14 @@ body.tyon>:not(#ty):not(#c){display:none!important}
 .tyGo{margin-top:18px;background:#2d5bb3;color:#fff;border:0;border-radius:999px;padding:11px 26px;font-size:15px}
 .tyBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.tyBtns button:not(.tyGo){margin-top:18px;background:#fff;border:1px solid #dcdcd7;color:#4b525a;border-radius:999px;padding:11px 18px;font-size:14px}
 .tyErr{font-size:13px;color:#5d636b;max-width:640px;margin-top:10px}
-.tyKb{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;width:min(640px,96vw)}
+.tyKb{flex:none;margin:14px auto max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;align-items:center;width:min(640px,96vw)}
 .tyKb .r{display:flex;gap:5px;width:100%;justify-content:center}.tyKb .num button{height:30px;font-size:12px;opacity:.75}
 .tyKb button{flex:1;max-width:56px;height:44px;border-radius:7px;background:#fbfbfa;border:1px solid #e1e2de;color:#6b7179;font-size:15px;box-shadow:0 1px 0 #e1e2de;transition:background .25s,color .25s}
 .tyKb button.w{flex:1.6;max-width:96px;font-size:12px}
-.tyKb button.g{animation:tyKg .35s}.tyKb button.r{animation:tyKr .35s}
+.tyKb button.g{background:#d3e9da;color:#2e9a5b;transform:translateY(1px);transition:none}.tyKb button.r{background:#f6d6d2;color:#c8473a;transform:translateY(1px);transition:none}
 @keyframes tyKg{0%{background:#cfe6d7;color:#2e9a5b;transform:translateY(1px)}}@keyframes tyKr{0%{background:#f6d6d2;color:#c8473a;transform:translateY(1px)}}
-@media (max-width:720px){.tyTxt{top:56%}.tySeg button{padding:5px 8px}.tyTop>button{padding:7px 10px}.tyKb{gap:5px}.tyKb .r{gap:4px}.tyKb button{height:42px}}
+@media (max-height:700px){.tyKb .num{display:none}.tyKb button{height:36px}.tyKb{margin-top:8px}.tyW{font-size:clamp(26px,4.4vw,40px)}.tySub{margin-top:4px}}
+@media (max-width:720px){.tySeg button{padding:5px 8px}.tyTop>button{padding:7px 10px}.tyKb{gap:5px}.tyKb .r{gap:4px}.tyKb button{height:42px}}
 @media (hover:hover) and (pointer:fine){.tyKb button:hover{background:#f0f1ef}}
 #pq{left:var(--L);right:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--L) - 24px);bottom:16px;padding:12px 18px;display:none;text-align:center;z-index:7}#pq.on{display:block}
 .ncard{position:relative}.ncard .sc{position:absolute;top:7px;right:7px;font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:9px;background:var(--panel3);color:var(--mut);z-index:1}
@@ -350,6 +352,6 @@ body.tyon>:not(#ty):not(#c){display:none!important}
 window.addEventListener('error',e=>{const m=document.getElementById('splashMsg');if(m&&document.getElementById('splash').style.opacity!=='0'){m.className='err';
   m.textContent=location.protocol==='file:'?"Ouvre l'appli avec « Lancer l'atlas.command » (double-clic), pas en ouvrant index.html directement.":'Erreur de chargement : '+(e.message||'réseau')}} ,true);
 </script>
-<script type="module" src="app.js?v=84"></script>
+<script type="module" src="app.js?v=88"></script>
 </body>
 </html>

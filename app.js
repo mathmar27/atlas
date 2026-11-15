@@ -1276,10 +1276,13 @@ if(innerWidth<900)leftOpen(false);
 const tyScene=new THREE.Scene(),tyCam=new THREE.PerspectiveCamera(22,1,.01,20),tyPiv=new THREE.Group();tyScene.add(tyPiv);
 const TYBG=0xf3f3f0;
 const tyVS=`varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
-const tyGhostM=new THREE.ShaderMaterial({uniforms:{uA:{value:1},uC:{value:new THREE.Color(0x7c838d)}},vertexShader:tyVS,transparent:true,depthWrite:false,
-  fragmentShader:`uniform float uA;uniform vec3 uC;varying vec3 vN;varying vec3 vV;void main(){float f=1.-abs(dot(normalize(vN),normalize(vV)));gl_FragColor=vec4(uC,(.028+.36*pow(f,2.4))*uA);}`});
+const tyGhostM=new THREE.ShaderMaterial({uniforms:{uA:{value:1}},vertexShader:tyVS,transparent:true,depthWrite:false,
+  fragmentShader:`uniform float uA;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);float f=1.-abs(dot(n,normalize(vV)));float l=.9+.1*max(dot(n,normalize(vec3(.3,.7,.6))),0.);
+  vec3 c=mix(vec3(.985,.985,.98),vec3(.60,.63,.68),pow(f,1.7))*l;gl_FragColor=vec4(c,(.2+.55*pow(f,2.))*uA);}`});
+const tyDepthM=new THREE.MeshBasicMaterial({colorWrite:false});
 const tyTgtM=new THREE.ShaderMaterial({uniforms:{uA:{value:1}},vertexShader:tyVS,transparent:true,
-  fragmentShader:`uniform float uA;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);float f=1.-abs(dot(n,normalize(vV)));float l=.62+.38*max(dot(n,normalize(vec3(.35,.65,.7))),0.);vec3 c=mix(vec3(.27,.52,.96),vec3(.66,.82,1.),f*f)*l;gl_FragColor=vec4(c,(.9+.1*f)*uA);}`});
+  fragmentShader:`uniform float uA;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float f=1.-max(dot(n,normalize(vV)),0.);float l=.55+.45*max(dot(n,normalize(vec3(.3,.7,.65))),0.);
+  vec3 c=vec3(.20,.47,.95)*l+vec3(.35,.55,.85)*pow(f,2.)*.5;gl_FragColor=vec4(c,uA);}`,side:THREE.DoubleSide});
 const tyMark=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),tyTgtM);tyMark.renderOrder=2;
 // version allégée d'un maillage (regroupement des sommets sur une grille)
 function tyLo(g,cell){const U=g.userData.tyLo||(g.userData.tyLo={}),key=cell.toPrecision(4);if(U[key])return U[key];
@@ -1293,13 +1296,13 @@ function tyBuild(ctx,items){tyPiv.clear();const bb=new THREE.Box3();ctx.forEach(
   tyPiv.position.copy(C);tyPiv.rotation.set(0,0,0);const inner=new THREE.Group();inner.position.copy(C).negate();tyPiv.add(inner);TY.inner=inner;TY.C=C;TY.R=R;TY.M=new Map();
   const tset=new Set(items.map(it=>it.part).filter(Boolean)),gb=new THREE.Vector3();
   for(const p of ctx){const o={lo:[],hi:[]};for(const m of p.meshes){const g=m.geometry;if(!g.boundingBox)g.computeBoundingBox();const sc=m.matrixWorld.getMaxScaleOnAxis(),diag=g.boundingBox.getSize(gb).length()*sc;
-      const lo=new THREE.Mesh(tyLo(g,Math.max(diag/30,R/240)/sc),tyGhostM);lo.matrixAutoUpdate=false;lo.matrix.copy(m.matrixWorld);lo.renderOrder=1;inner.add(lo);o.lo.push(lo);
-      if(tset.has(p)){const hi=new THREE.Mesh(g,tyTgtM);hi.matrixAutoUpdate=false;hi.matrix.copy(m.matrixWorld);hi.renderOrder=2;hi.visible=false;inner.add(hi);o.hi.push(hi)}}
+      const lo=new THREE.Mesh(g,tyGhostM);lo.matrixAutoUpdate=false;lo.matrix.copy(m.matrixWorld);lo.layers.set(1);inner.add(lo);o.lo.push(lo);
+      if(tset.has(p)){const hi=new THREE.Mesh(g,tyTgtM);hi.matrixAutoUpdate=false;hi.matrix.copy(m.matrixWorld);hi.layers.set(3);hi.visible=false;inner.add(hi);o.hi.push(hi)}}
     TY.M.set(p,o)}
-  tyMark.visible=false;inner.add(tyMark);const fb=TY.FB||bb;TY.FC=fb.getCenter(new THREE.Vector3());TY.FR=Math.max(fb.getSize(new THREE.Vector3()).length()/2*.86,.02)}
+  tyMark.visible=false;tyMark.layers.set(3);inner.add(tyMark);const fb=TY.FB||bb;TY.FC=fb.getCenter(new THREE.Vector3());TY.FR=Math.max(fb.getSize(new THREE.Vector3()).length()/2*.86,.02)}
 function tyView(it){if(it.v)return it.v;let c,r,d;
   if(it.s){c=it.s.clone();r=Math.max(TY.def.bone.radius*.6,.03);d=it.n.clone()}
-  else{const p=it.part;pbox(p);c=p.center.clone();d=p.center.clone().sub(TY.FC);if(p.radius>TY.FR*.3){c=TY.FC.clone().lerp(c,.3);r=TY.FR}else{r=Math.max(p.radius*3,TY.FR*.62);c=TY.FC.clone().lerp(c,.55)}}
+  else{const p=it.part;pbox(p);c=p.center.clone();d=p.center.clone().sub(TY.FC);if(p.radius>TY.FR*.3){c=TY.FC.clone().lerp(c,.3);r=TY.FR}else if(p.radius<TY.FR*.07){r=Math.max(p.radius*7,TY.FR*.36);c=TY.FC.clone().lerp(c,.8)}else{r=Math.max(p.radius*3,TY.FR*.62);c=TY.FC.clone().lerp(c,.55)}}
   d.y=0;if(d.lengthSq()<1e-7)d.set(0,0,1);d.normalize();const f=Math.abs(d.z)<.2&&!it.s?.55:1;return it.v={c,r,yaw:Math.atan2(d.x,d.z)*f}}
 function tyShow(it,on){if(it.part){const o=TY.M.get(it.part);if(o){o.lo.forEach(m=>m.visible=!on);o.hi.forEach(m=>m.visible=on)}}else{tyMark.visible=on;if(on){tyMark.position.copy(it.s);tyMark.scale.setScalar(it.r);tyMark.updateMatrix()}}}
 const _tc=new THREE.Vector3();
@@ -1308,13 +1311,13 @@ function tySlot(i,x,y,size,al,cur,H){const it=TY.items[TY.order[i]];if(!it||size
   const FX=1.9,FY=1.3,d=v.r*FY/Math.sin(THREE.MathUtils.degToRad(tyCam.fov/2))*1.06,el=.16;tyCam.position.set(_tc.x,_tc.y+Math.sin(el)*d,_tc.z+Math.cos(el)*d);tyCam.lookAt(_tc);
   tyCam.near=Math.max(.002,d-TY.R*2.2);tyCam.far=d+TY.R*2.4;tyCam.aspect=FX/FY;tyCam.updateProjectionMatrix();
   tyGhostM.uniforms.uA.value=al;tyTgtM.uniforms.uA.value=al;const vw=size*FX,vh=size*FY,vx=x-vw/2,vy=H-(y+vh/2);
-  renderer.setViewport(vx,vy,vw,vh);renderer.setScissor(Math.max(0,vx),Math.max(0,vy),vw,vh);renderer.clearDepth();renderer.render(tyScene,tyCam);tyShow(it,false)}
+  renderer.setViewport(vx,vy,vw,vh);renderer.setScissor(Math.max(0,vx),Math.max(0,vy),vw,vh);renderer.clearDepth();tyCam.layers.set(1);tyScene.overrideMaterial=tyDepthM;renderer.render(tyScene,tyCam);tyScene.overrideMaterial=null;renderer.render(tyScene,tyCam);renderer.clearDepth();tyCam.layers.set(3);renderer.render(tyScene,tyCam);tyShow(it,false)}
 const tyEase=k=>k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
 function tyFrame(t){const W=innerWidth,H=innerHeight;
   if(TY.anim){const k=Math.min(1,(t-TY.anim.t0)/620);TY.pos=TY.anim.a+(TY.anim.b-TY.anim.a)*tyEase(k);if(k>=1){TY.pos=TY.anim.b;TY.anim=null}}
   if(!TY.drag){TY.sway=Math.sin(t/2600)*.2*(TY.calm?0:1)}
   renderer.setScissorTest(true);renderer.setViewport(0,0,W,H);renderer.setScissor(0,0,W,H);renderer.setClearColor(TYBG,1);renderer.clear();
-  const mob=W<720,S=Math.min(W*(mob?.86:.62),H*(mob?.44:.5)),cy=H*(mob?.32:.34),gap=Math.min(W*(mob?.4:.36),S*1.08),sl=[];
+  const mob=W<720,st=TY.stg||(TY.stg=(()=>{const e=$('#ty .tyStage');if(!e)return{top:60,bottom:H*.55};const r=e.getBoundingClientRect();return{top:r.top,bottom:r.bottom}})()),sh=Math.max(80,st.bottom-st.top),S=Math.min(W*(mob?.82:.5),sh*.96),cy=(st.top+st.bottom)/2,gap=Math.min(W*(mob?.4:.36),S*1.08),sl=[];
   for(let i=Math.floor(TY.pos)-2;i<=Math.ceil(TY.pos)+2;i++){if(i<0||i>=TY.order.length)continue;const p=i-TY.pos,a=Math.abs(p);if(a>2.2)continue;sl.push([a,i,p])}
   sl.sort((u,v)=>v[0]-u[0]);for(const [a,i,p] of sl){const sc=1-.56*Math.min(1,a),al=Math.max(0,(1-.5*Math.min(1,a))*(a>1?Math.max(0,1.9-a)/.9:1));tySlot(i,W/2+Math.sign(p)*Math.min(a,1)*gap+Math.sign(p)*Math.max(0,a-1)*gap*.8,cy+a*S*.04,S*sc,al,i===TY.cur&&a<.5,H)}
   renderer.setScissorTest(false)}
@@ -1371,12 +1374,13 @@ function tyUI(){const el=$('#ty'),d=TY.def,n=TY.items.length;el.classList.add('o
   const lv=`<div class="tySeg">${[['guide','Nom visible'],['mask','Masqué'],['free','Sans aide']].map(([k,l])=>`<button data-tl="${k}" class="${TY.lv===k?'on':''}">${l}</button>`).join('')}</div>`;
   const kb=`<div class="tyKb">${TYK.map((r,j)=>`<div class="r${j?'':' num'}">${r.map(k=>`<button data-k="${k}">${k}</button>`).join('')}${j===3?'<button class="w" data-ty="hint">Indice</button><button class="w" data-ty="skip">Passer</button>':''}</div>`).join('')}</div>`;
   const top=`<div class="tyTop"><button data-ty="quit">← Quitter</button>${lv}<button data-ty="snd" title="Sons du clavier">${TY.snd?'🔊':'🔇'}</button></div>`;
-  if(TY.st==='start')el.innerHTML=top+`<div class="tyTxt in"><div class="tyLab">${esc(d.title)}</div><div class="tyW tyBig">Écris le nom</div><div class="tySub">${n} ${d.bone?'reliefs':'structures'} · la structure en bleu change à chaque mot · tu peux tourner le modèle</div><button class="tyGo" data-ty="go">Commencer</button></div>`;
-  else if(TY.st==='end'){const r=TY.res,er=[...TY.errs].map(i=>TY.items[i].fr);el.innerHTML=top+`<div class="tyTxt in tyEnd"><div class="tyLab">${esc(d.title)}</div><div class="tyW tyBig" style="color:${r.pc>=80?'#2e9a5b':r.pc>=50?'#c68a17':'#c8473a'}">${r.pc} %</div><div class="tySub">${TY.ok} sans faute · ${TY.ko} avec fautes · ${r.tm} s${r.cpm?' · '+r.cpm+' lettres/min':''} · meilleur ${PQB[tyQK(d.id)]} %</div>${er.length?`<div class="tyErr"><b>À revoir :</b> ${er.map(esc).join(' · ')}</div>`:''}<div class="tyBtns"><button class="tyGo" data-ty="again">Recommencer</button>${er.length?'<button data-ty="errs">Refaire les erreurs</button>':''}<button data-ty="nav">Autres quiz</button></div></div>`}
-  else el.innerHTML=top+`<div class="tyTxt in"><div class="tyLab"></div><div class="tyW"></div><div class="tySub"></div><div class="tySc"></div></div>`+kb;
+  TY.stg=null;const stg='<div class="tyStage"></div>';
+  if(TY.st==='start')el.innerHTML=top+stg+`<div class="tyTxt in"><div class="tyLab">${esc(d.title)}</div><div class="tyW tyBig">Écris le nom</div><div class="tySub">${n} ${d.bone?'reliefs':'structures'} · la structure en bleu change à chaque mot · tu peux tourner le modèle</div><button class="tyGo" data-ty="go">Commencer</button></div>`;
+  else if(TY.st==='end'){const r=TY.res,er=[...TY.errs].map(i=>TY.items[i].fr);el.innerHTML=top+stg+`<div class="tyTxt in tyEnd"><div class="tyLab">${esc(d.title)}</div><div class="tyW tyBig" style="color:${r.pc>=80?'#2e9a5b':r.pc>=50?'#c68a17':'#c8473a'}">${r.pc} %</div><div class="tySub">${TY.ok} sans faute · ${TY.ko} avec fautes · ${r.tm} s${r.cpm?' · '+r.cpm+' lettres/min':''} · meilleur ${PQB[tyQK(d.id)]} %</div>${er.length?`<div class="tyErr"><b>À revoir :</b> ${er.map(esc).join(' · ')}</div>`:''}<div class="tyBtns"><button class="tyGo" data-ty="again">Recommencer</button>${er.length?'<button data-ty="errs">Refaire les erreurs</button>':''}<button data-ty="nav">Autres quiz</button></div></div>`}
+  else el.innerHTML=top+stg+`<div class="tyTxt in"><div class="tyLab"></div><div class="tyW"></div><div class="tySub"></div><div class="tySc"></div></div>`+kb;
   if(TY.st==='run')tyPaint()}
 function tyKb(c){}
-function tyKbFlash(c,k){const b=$(`#ty .tyKb [data-k="${c}"]`);if(!b)return;b.classList.remove('g','r','p');void b.offsetWidth;b.classList.add(k)}
+function tyKbFlash(c,k){const b=$(`#ty .tyKb [data-k="${c}"]`);if(!b)return;b.classList.remove('g','r');b.classList.add(k);clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove(k),170)}
 $('#ty').addEventListener('pointerdown',e=>{const k=e.target.closest('[data-k]');if(k){e.preventDefault();tyKey(k.dataset.k);return}
   const b=e.target.closest('button');if(b){e.preventDefault();const a=b.dataset.ty,l=b.dataset.tl;
     if(l){TY.lv=l;LS.set('tylv',l);$$('#ty [data-tl]').forEach(x=>x.classList.toggle('on',x===b));tyPaint();return}
@@ -1387,7 +1391,7 @@ $('#ty').addEventListener('pointerdown',e=>{const k=e.target.closest('[data-k]')
     return}
   TY.drag={x:e.clientX,y:e.clientY,yaw:TY.yaw,pitch:TY.pitch};TY.calm=true;try{e.target.setPointerCapture(e.pointerId)}catch{}});
 $('#ty').addEventListener('pointermove',e=>{const d=TY.drag;if(!d)return;TY.yaw=d.yaw+(e.clientX-d.x)*.009;TY.pitch=THREE.MathUtils.clamp(d.pitch+(e.clientY-d.y)*.006,-.7,.7)});
-addEventListener('pointerup',()=>{if(TY.drag){TY.drag=null;TY.sway=0}});
+addEventListener('resize',()=>{TY.stg=null});addEventListener('pointerup',()=>{if(TY.drag){TY.drag=null;TY.sway=0}});
 addEventListener('keydown',e=>{if(!TY.on)return;if(e.metaKey||e.ctrlKey)return;const k=e.key;
   if(k==='Escape'){e.preventDefault();tyQuit(true);return}
   if(TY.st==='start'&&(k==='Enter'||k===' ')){e.preventDefault();tySnd('swish');TY.st='run';tyUI();tyBegin();return}
