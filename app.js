@@ -7,7 +7,7 @@ import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 
 const VER=new URL(import.meta.url).searchParams.get('v')||'0';
 const CDN='https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/';
-const EXPORT=/\/atlas\/(index\.html)?$/.test(location.pathname)?'../export/':'export/';
+const EXPORT=(()=>{const ok=u=>{try{const x=new XMLHttpRequest();x.open('HEAD',u+'squelette.glb',false);x.send();return x.status===200}catch{return false}};return ok('export/')?'export/':ok('../export/')?'../export/':'export/'})();
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const LA=x=>CFG.latin?x:'';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
