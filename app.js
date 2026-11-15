@@ -1280,9 +1280,9 @@ const tyGhostM=new THREE.ShaderMaterial({uniforms:{uA:{value:1}},vertexShader:ty
   fragmentShader:`uniform float uA;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);float f=1.-abs(dot(n,normalize(vV)));float l=.9+.1*max(dot(n,normalize(vec3(.3,.7,.6))),0.);
   vec3 c=mix(vec3(.985,.985,.98),vec3(.60,.63,.68),pow(f,1.7))*l;gl_FragColor=vec4(c,(.2+.55*pow(f,2.))*uA);}`});
 const tyDepthM=new THREE.MeshBasicMaterial({colorWrite:false});
-const tyTgtM=new THREE.ShaderMaterial({uniforms:{uA:{value:1}},vertexShader:tyVS,transparent:true,
-  fragmentShader:`uniform float uA;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float f=1.-max(dot(n,normalize(vV)),0.);float l=.55+.45*max(dot(n,normalize(vec3(.3,.7,.65))),0.);
-  vec3 c=vec3(.20,.47,.95)*l+vec3(.35,.55,.85)*pow(f,2.)*.5;gl_FragColor=vec4(c,uA);}`,side:THREE.DoubleSide});
+const tyTgtM=new THREE.ShaderMaterial({uniforms:{uA:{value:1},uC:{value:new THREE.Color(.2,.47,.95)}},vertexShader:tyVS,transparent:true,
+  fragmentShader:`uniform float uA;uniform vec3 uC;varying vec3 vN;varying vec3 vV;void main(){vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float f=1.-max(dot(n,normalize(vV)),0.);float l=.55+.45*max(dot(n,normalize(vec3(.3,.7,.65))),0.);
+  vec3 c=uC*l+mix(uC,vec3(1.),.45)*pow(f,2.)*.5;gl_FragColor=vec4(c,uA);}`,side:THREE.DoubleSide});
 const tyMark=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),tyTgtM);tyMark.renderOrder=2;
 // version allégée d'un maillage (regroupement des sommets sur une grille)
 function tyLo(g,cell){const U=g.userData.tyLo||(g.userData.tyLo={}),key=cell.toPrecision(4);if(U[key])return U[key];
@@ -1304,7 +1304,8 @@ function tyView(it){if(it.v)return it.v;let c,r,d;
   if(it.s){c=it.s.clone();r=Math.max(TY.def.bone.radius*.6,.03);d=it.n.clone()}
   else{const p=it.part;pbox(p);c=p.center.clone();d=p.center.clone().sub(TY.FC);if(p.radius>TY.FR*.3){c=TY.FC.clone().lerp(c,.3);r=TY.FR}else if(p.radius<TY.FR*.07){r=Math.max(p.radius*7,TY.FR*.36);c=TY.FC.clone().lerp(c,.8)}else{r=Math.max(p.radius*3,TY.FR*.62);c=TY.FC.clone().lerp(c,.55)}}
   d.y=0;if(d.lengthSq()<1e-7)d.set(0,0,1);d.normalize();const f=Math.abs(d.z)<.2&&!it.s?.55:1;return it.v={c,r,yaw:Math.atan2(d.x,d.z)*f}}
-function tyShow(it,on){if(it.part){const o=TY.M.get(it.part);if(o){o.lo.forEach(m=>m.visible=!on);o.hi.forEach(m=>m.visible=on)}}else{tyMark.visible=on;if(on){tyMark.position.copy(it.s);tyMark.scale.setScalar(it.r);tyMark.updateMatrix()}}}
+const TY_BLUE=new THREE.Color(.2,.47,.95),TY_RED=new THREE.Color(.9,.16,.17),tyArt=p=>!!p&&p.sys.id==='vaisseaux'&&/artery|arteri|aorta|truncus|coronary|carotid|subclavian|iliac|femoral|brachial|radial|ulnar|tibial|popliteal|axillary|celiac|mesenteric|renal|gastric|hepatic|splenic|aortic|circumflex/i.test((p.mat||'')+' '+p.en)&&!/vein|vena|venous/i.test((p.mat||'')+' '+p.en);
+function tyShow(it,on){if(on)tyTgtM.uniforms.uC.value.copy(tyArt(it.part)?TY_RED:TY_BLUE);if(it.part){const o=TY.M.get(it.part);if(o){o.lo.forEach(m=>m.visible=!on);o.hi.forEach(m=>m.visible=on)}}else{tyMark.visible=on;if(on){tyMark.position.copy(it.s);tyMark.scale.setScalar(it.r);tyMark.updateMatrix()}}}
 const _tc=new THREE.Vector3();
 function tySlot(i,x,y,size,al,cur,H){const it=TY.items[TY.order[i]];if(!it||size<4)return;const v=tyView(it);tyShow(it,true);
   tyPiv.rotation.set(cur?TY.pitch:0,-v.yaw+(cur?TY.sway+TY.yaw:0),0);tyPiv.updateMatrixWorld(true);_tc.copy(v.c).applyMatrix4(TY.inner.matrixWorld);
