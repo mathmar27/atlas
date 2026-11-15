@@ -19,7 +19,7 @@ const LS={get(k,d){try{const v=localStorage.getItem('atlas.'+k);return v==null?d
 // ------------------------------------------------------------------ réglages
 const MOBILE=matchMedia('(pointer:coarse)').matches||Math.min(innerWidth,innerHeight)<600;
 const DEF={shadows:!MOBILE,shadowStrength:.65,ground:true,detail:MOBILE?0:1,exposure:1.05,quality:'auto',fov:30,zoom:1,rotate:1,invertZoom:false,inertia:true,
- pin:1,halo:1,labels:!MOBILE,ghost:.07,tips:true,pqmode:'pins',latin:true,english:false,sex:'m'};
+ pin:1,halo:1,labels:!MOBILE,ghost:.07,tips:true,pqmode:'pins',pqlvl:'guide',latin:true,english:false,sex:'m'};
 const CFG=Object.assign({},DEF,LS.get('cfg',{}));
 // ------------------------------------------------------------------ morphologie féminine (déformation du modèle de base)
 const SEX='m',SCL=1;
@@ -281,7 +281,7 @@ function ingest(gltf,s){
 const title=p=>p.ins?(p.ins.type==='o'?'Origine — ':'Terminaison — ')+(p.fr||p.en):(p.fr||p.en);
 const sideFr=p=>p.side==='r'?'droite':p.side==='l'?'gauche':'';
 function pbox(p){if(!p.box){p.box=new THREE.Box3();for(const m of p.meshes){if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();p.box.union(m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld))}p.center=p.box.getCenter(new THREE.Vector3());p.radius=p.box.getSize(new THREE.Vector3()).length()/2}return p.box}
-const GOLD=new THREE.Color(0xffa41f),GREEN=new THREE.Color(0x4fd47f),RED=new THREE.Color(0xf0604e),HOVC=new THREE.Color(0x63c8ff);let INPQ=false;
+const GOLD=new THREE.Color(0xffa41f),GREEN=new THREE.Color(0x4fd47f),RED=new THREE.Color(0xf0604e),HOVC=new THREE.Color(0x63c8ff),TYC=new THREE.Color(0x3d8bff);let INPQ=false;
 function apply(p){
   const vis=p.sys.on&&!p.hidden,sel=(p===S.sel||S.multi.has(p))&&!p.lmOn,hov=p===S.hov;
   for(const m of p.meshes){m.visible=vis;const mt=m.material;
@@ -289,6 +289,7 @@ function apply(p){
     mt.opacity=p.ghost?(p.cg?(p.sys.id==='squelette'?.2:.1):CFG.ghost):1;m.renderOrder=p.ghost?5:0;m.castShadow=!p.ghost;
     if(p.flash){mt.color.copy(p.flash>0?GREEN:RED);mt.emissive.copy(mt.color).multiplyScalar(.25)}
     else if(sel){mt.color.copy(mt.userData.base).lerp(GOLD,.82);mt.emissive.setRGB(.26,.13,.0)}
+    else if(p.pqT){mt.color.copy(mt.userData.base).lerp(TYC,.8);mt.emissive.setRGB(.03,.08,.2)}
     else{mt.color.copy(mt.userData.base);if(p.pqDone)mt.color.lerp(GREEN,.55);if(hov&&INPQ){mt.color.lerp(HOVC,.5);mt.emissive.setRGB(.03,.07,.1)}else if(hov)mt.emissive.setRGB(.06,.085,.08);else mt.emissive.setRGB(0,0,0)}}
   pickDirty=visDirty=capsDirty=true;invalidate()}
 const WHITEISH=new THREE.Color(0xf1e9d8);
@@ -327,7 +328,7 @@ const rc=new THREE.Raycaster(),ndc=new THREE.Vector2();
 const clip={on:false,axis:'x',flip:false,plane:new THREE.Plane(new THREE.Vector3(-1,0,0),0),box:null};
 function pick(ev,pins=true){
   const r=canvas.getBoundingClientRect();ndc.set((ev.clientX-r.left)/r.width*2-1,-(ev.clientY-r.top)/r.height*2+1);rc.setFromCamera(ndc,camera);
-  if(PQ.on){if(PQ.mode==='pins'){const h=rc.intersectObjects(PQ.pins.filter(s=>s.visible&&!s.userData.done&&!s.userData.occ),false);return h.length?{pq:h[0].object.userData.i}:null}return pqMap(pickParts())}
+  if(PQ.on){if(PQ.mode==='type')return null;if(PQ.mode==='pins'){const h=rc.intersectObjects(PQ.pins.filter(s=>s.visible&&!s.userData.done&&!s.userData.occ),false);return h.length?{pq:h[0].object.userData.i}:null}return pqMap(pickParts())}
   if(pins&&LM.bone){const h=rc.intersectObjects(LM.pins.filter(s=>s.visible),false);if(h.length)return{lm:h[0].object.userData.i}}
   return pickParts()}
 function pickList(){if(pickDirty){pickables=[];for(const p of parts)if(p.sys.on&&!p.hidden&&!p.ghost)for(const m of p.meshes)pickables.push(m);pickDirty=false}return pickables}
@@ -835,7 +836,7 @@ const ROWS=[['h','Affichage'],['tog','shadows','Ombres portées'],['rng','shadow
  ['rng','fov','Perspective',14,60,1],
  ['h','Navigation'],['rng','zoom','Vitesse du zoom',.3,4,.1],['rng','rotate','Vitesse de rotation',.3,2.5,.1],['tog','invertZoom','Inverser le sens du zoom'],['tog','inertia','Inertie des mouvements'],
  ['h','Reliefs osseux'],['rng','pin','Taille des pastilles',.6,1.8,.1],['seg','halo','Halos colorés',[[0,'Aucun'],[1,'Normal'],[1.6,'Large']]],['tog','labels','Étiquettes autour de l\'os'],
- ['h','Quiz'],['seg','pqmode','Répondre avec',[['pins','Pastilles'],['hover','Survol de la structure']]],
+ ['h','Quiz'],['seg','pqmode','Répondre avec',[['pins','Pastilles'],['hover','Survol de la structure'],['type','Écrire le nom']]],['seg','pqlvl','Mode écriture : aide',[['guide','Nom visible'],['mask','Masqué'],['free','Aucune']]],
  ['h','Noms'],['tog','latin','Noms latins'],['tog','english','Noms anglais'],
  ['h','Divers'],['rng','ghost','Opacité des structures estompées',.02,.35,.01],['tog','tips','Nom au survol de la souris']];
 function applyCfg(k){
@@ -969,7 +970,7 @@ function quizKey(e,k){
   if(/^[1-4]$/.test(k)&&!Q.answered){const b=$$('#qzOpts button')[+k-1];if(b)b.click()}}
 
 // ------------------------------------------------------------------ navigateur (Atlas / Quiz) et quiz à pastilles
-const NAV={on:false,mode:'atlas',stack:[],grid:LS.get('navgrid',true),q:'',f:'all',last:null},PQ={on:false,get mode(){return CFG.pqmode==='hover'?'hover':'pins'},pins:[],items:[],queue:[],ok:0,ko:0,def:null,hv:-1,errs:new Set()},PQB=LS.get('pq',{});
+const NAV={on:false,mode:'atlas',stack:[],grid:LS.get('navgrid',true),q:'',f:'all',last:null},PQ={on:false,get mode(){return CFG.pqmode==='hover'||CFG.pqmode==='type'?CFG.pqmode:'pins'},pins:[],items:[],queue:[],ok:0,ko:0,def:null,hv:-1,errs:new Set()},PQB=LS.get('pq',{});
 const NSYS=[['squelette','Os · système squelettique'],['articulations','Articulations · système articulaire'],['muscles','Muscles'],['vaisseaux','Cœur et vaisseaux'],['nerfs','Système nerveux'],['visceres','Viscères']];
 const NREG=[['tc','Tête et cou'],['tr','Tronc'],['ms','Membre supérieur'],['mi','Membre inférieur']];
 function regOf(p){if(p.sys.id==='squelette'){const g=/trapezoid/i.test(p.en)?'msup':boneGroup(p.en);return g==='crane'?'tc':g==='msup'?'ms':g==='minf'?'mi':/^(Atlas|Axis|Vertebra C)/.test(p.base)?'tc':'tr'}
@@ -1189,21 +1190,47 @@ function pqStart(def){navClose();NAV.last=def;PQ.def=def;PQ.snap=PQ.on?PQ.snap:s
     PQ.items.forEach((it,k)=>{if(k>=64)return;LMU.uLmP.value[k].copy(it.s);LMU.uLmN.value[k].copy(it.n);LMU.uLmC.value[k].set(it.col.r,it.col.g,it.col.b);LMU.uLmR.value[k]=it.r});LMU.uLmCount.value=Math.min(64,PQ.items.length);LMU.uLmSel.value=-1;
     for(const m of def.bone.meshes){m.material.userData.halo=true;m.material.needsUpdate=true}PQ.haloB=def.bone}
   else{showSet(s,def.ctx,def.gh||[]);for(const p of def.parts){pbox(p);const o=p.center.clone().addScaledVector(dir,p.radius+.3);rcq.set(o,dir.clone().negate());const h=rcq.intersectObjects(p.meshes,false)[0];PQ.items.push({fr:title(p),la:p.la,pos:h?h.point.clone().addScaledVector(dir,.001):p.center.clone(),part:p})}
-    PQ.tinted=[];const keys=[...new Set(def.ctx.map(colKey))].sort();if(s.id==='squelette')def.ctx.forEach(p=>{const c=new THREE.Color(QPAL[keys.indexOf(colKey(p))%QPAL.length]);for(const m of p.meshes){const u=m.material.userData;if(/Cartilage|Teeth|Tendon/.test(p.mat)&&p.meshes.length>1)continue;u.base0=u.base0||u.base.clone();u.base.copy(c)}PQ.tinted.push(p);apply(p)})}
-  PQ.pins=hov?[]:PQ.items.map((it,i)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:pqTex(it.css||'#ffffff'),depthTest:false,depthWrite:false,sizeAttenuation:false,transparent:true}));sp.position.copy(it.pos);sp.renderOrder=30;sp.userData.i=i;pinG.add(sp);return sp});
-  PQ.on=true;INPQ=true;PQ.ok=PQ.ko=0;PQ.queue=shuffle(PQ.items.map((_,i)=>i));PQ.started=false;document.body.classList.add('inpq');$('#card').classList.remove('on');canvas.style.cursor='';
+    PQ.tinted=[];const keys=[...new Set(def.ctx.map(colKey))].sort();if(s.id==='squelette'&&PQ.mode!=='type')def.ctx.forEach(p=>{const c=new THREE.Color(QPAL[keys.indexOf(colKey(p))%QPAL.length]);for(const m of p.meshes){const u=m.material.userData;if(/Cartilage|Teeth|Tendon/.test(p.mat)&&p.meshes.length>1)continue;u.base0=u.base0||u.base.clone();u.base.copy(c)}PQ.tinted.push(p);apply(p)})}
+  const ty=PQ.mode==='type';PQ.pins=hov||ty?[]:PQ.items.map((it,i)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:pqTex(it.css||'#ffffff'),depthTest:false,depthWrite:false,sizeAttenuation:false,transparent:true}));sp.position.copy(it.pos);sp.renderOrder=30;sp.userData.i=i;pinG.add(sp);return sp});
+  PQ.on=true;INPQ=true;PQ.ok=PQ.ko=0;PQ.queue=shuffle(PQ.items.map((_,i)=>i));PQ.started=false;PQ.t=null;if(ty&&!def.bone){PQ.ghosted=def.ctx.concat(def.gh||[]).filter(p=>p.sys.on&&!p.hidden);for(const p of PQ.ghosted){p.ghost=true;p.cg=true;apply(p)}}document.body.classList.add('inpq');document.body.classList.toggle('pqty',ty);$('#card').classList.remove('on');canvas.style.cursor='';
   const b=new THREE.Box3();if(def.ctx)(s.id==='squelette'?def.ctx:def.parts).forEach(p=>b.union(pbox(p)));else PQ.items.forEach(it=>b.expandByPoint(it.pos));def.bone?flyTo(def.bone.center,def.bone.radius*1.1,new THREE.Vector3(0,0,1)):flyTo(b.getCenter(new THREE.Vector3()),Math.max(b.getSize(new THREE.Vector3()).length()/2*1.15,.1),new THREE.Vector3(0,0,1));pqPaint()}
 function pqTex(css,done){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.beginPath();x.arc(32,32,23,0,7);x.fillStyle=css;x.fill();x.lineWidth=8;x.strokeStyle='#0b1114';x.stroke();
   x.beginPath();x.arc(32,32,26.5,0,7);x.lineWidth=2;x.strokeStyle='rgba(255,255,255,.85)';x.stroke();if(done){x.beginPath();x.moveTo(21,33);x.lineTo(29,41);x.lineTo(44,24);x.lineWidth=6;x.lineCap='round';x.lineJoin='round';x.strokeStyle='#0b1114';x.stroke()}
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
-function pqClear(){for(const sp of PQ.pins){pinG.remove(sp);sp.material.map.dispose();sp.material.dispose()}PQ.pins=[];setHover(null);PQ.hv=-1;
+function pqClear(){const pqi=$('#pqIn');if(pqi)pqi.blur();if(PQ.t){tyUnfocus();PQ.t=null}for(const p of PQ.ghosted||[]){p.ghost=false;p.cg=false;apply(p)}PQ.ghosted=[];for(const sp of PQ.pins){pinG.remove(sp);sp.material.map.dispose();sp.material.dispose()}PQ.pins=[];setHover(null);PQ.hv=-1;
   for(const it of PQ.items)if(it.part&&it.part.pqDone){it.part.pqDone=false;apply(it.part)}
   for(const p of PQ.tinted||[])for(const m of p.meshes)if(m.material.userData.base0){m.material.userData.base.copy(m.material.userData.base0);m.material.userData.base0=null}
   if(PQ.haloB){for(const m of PQ.haloB.meshes){m.material.userData.halo=false;m.material.needsUpdate=true}PQ.haloB=null;LMU.uLmSel.value=-1}(PQ.tinted||[]).forEach(apply);PQ.tinted=[]}
 function pqPaint(end){const el=$('#pq'),d=PQ.def,n=PQ.items.length;el.classList.add('on');
   if(end){const pc=Math.round(PQ.ok/(PQ.ok+PQ.ko)*100),er=[...PQ.errs].map(i=>PQ.items[i].fr);el.innerHTML=`<div class="pqT">${esc(d.title)}</div><div class="score" style="color:${pc>=80?'var(--ok)':pc>=50?'var(--gold)':'var(--ko)'}">${pc} %</div><div class="mut">${PQ.ok} justes · ${PQ.ko} erreur${PQ.ko>1?'s':''} · meilleur score ${PQB[d.id]} %</div>${er.length?`<div class="pqE"><b>À revoir :</b> ${er.map(esc).join(' · ')}</div>`:''}<div class="pqB"><button class="on" data-p="again">Recommencer</button>${er.length?'<button data-p="errs">Refaire les erreurs</button>':''}<button data-p="nav">Autres quiz</button><button data-p="quit">Quitter</button></div>`;return}
-  if(!PQ.started){el.innerHTML=`<div class="pqT">${esc(d.title)}</div><div class="mut">${n} ${d.bone?'reliefs':'structures'} · ${PQ.mode==='pins'?'clique la pastille qui correspond au nom affiché':'survole le modèle : la structure sous le pointeur s\'éclaire, clique celle qui correspond au nom affiché'}. Tu peux tourner et zoomer.</div><div class="pqB"><button class="on" data-p="go">Prêt · commencer le quiz !</button></div>`;return}
+  if(PQ.started&&PQ.t){tyPaint(el);return}
+  if(!PQ.started){el.innerHTML=`<div class="pqT">${esc(d.title)}</div><div class="mut">${n} ${d.bone?'reliefs':'structures'} · ${PQ.mode==='type'?'écris le nom de la structure en bleu ('+({guide:'nom visible',mask:'lettres masquées',free:'sans aide'})[CFG.pqlvl]+' · Tab = une lettre d\'indice)':PQ.mode==='pins'?'clique la pastille qui correspond au nom affiché':'survole le modèle : la structure sous le pointeur s\'éclaire, clique celle qui correspond au nom affiché'}. Tu peux tourner et zoomer.</div><div class="pqB"><button class="on" data-p="go">Prêt · commencer le quiz !</button></div>`;return}
   const it=PQ.items[PQ.queue[0]],done=n-PQ.queue.length;el.innerHTML=`<div class="pqP"><i style="width:${done/n*100}%"></i></div><div class="pqQ"><b>${esc(it.fr)}</b>${LA(it.la)?`<span class="la">${esc(it.la)}</span>`:''}</div><div class="pqS"><span class="ok">✓ ${PQ.ok}</span><span class="ko">✗ ${PQ.ko}</span><span class="mut">${done} / ${n}</span><button data-p="skip" title="Passer cette question (comptée comme erreur)">Passer</button></div>`}
+// mode écriture : taper le nom de la structure surlignée
+const tyF=c=>c.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(),tyL=c=>/[a-z0-9]/.test(tyF(c));
+const tyName=it=>it.fr.replace(/\s*\([^)]*\)/g,'').replace(/œ/g,'oe').replace(/Œ/g,'Oe').replace(/æ/g,'ae').replace(/\s+/g,' ').trim();
+function tySkip(){const t=PQ.t;while(t.pos<t.w.length&&!tyL(t.w[t.pos]))t.pos++}
+function tyBegin(){const i=PQ.queue[0];if(i===undefined)return;PQ.t={i,w:tyName(PQ.items[i]),pos:0,err:0,bad:0};tySkip();
+  const it=PQ.items[i],d=PQ.def;if(d.bone){LMU.uLmSel.value=i;flyTo(it.s,Math.max(d.bone.radius*.55,.035),it.n,550)}
+  else{const p=it.part;p.pqT=true;p.ghost=false;p.cg=false;apply(p);pbox(p);flyTo(p.center,Math.max(p.radius*1.9,.05),null,550)}
+  pqPaint();tyIn()}
+function tyUnfocus(){const t=PQ.t;if(!t)return;const it=PQ.items[t.i];if(PQ.def.bone){LMU.uLmSel.value=-1}else{const p=it.part;p.pqT=false;if((PQ.ghosted||[]).includes(p)){p.ghost=true;p.cg=true}apply(p)}invalidate()}
+function tyIn(){let x=$('#pqIn');if(!x){x=document.createElement('input');x.id='pqIn';x.autocomplete='off';x.autocapitalize='off';x.spellcheck=false;x.setAttribute('autocorrect','off');document.body.appendChild(x);
+    x.addEventListener('input',()=>{const v=x.value;x.value='';for(const c of v)tyKey(c)});
+    x.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();pqQuit()}else if(e.key==='Tab'){e.preventDefault();tyHint()}else if(e.key==='Enter'){e.preventDefault();if(!PQ.t&&!PQ.queue.length)pqStart(PQ.def)}e.stopPropagation()})}
+  if(PQ.on&&PQ.t)setTimeout(()=>x.focus({preventScroll:true}),30)}
+function tyKey(c){const t=PQ.t;if(!t||t.pos>=t.w.length)return;if(c===' '||!tyL(c))return;
+  if(tyF(c)===tyF(t.w[t.pos])){t.pos++;tySkip();if(t.pos>=t.w.length){tyDone();return}}
+  else{t.err++;t.bad=1;const el=$('#pq .tyW');if(el){el.classList.remove('shk');void el.offsetWidth;el.classList.add('shk')}if(CFG.pqlvl==='free'&&t.err%3===0){t.pos++;tySkip();if(t.pos>=t.w.length){tyDone();return}}}
+  tyPaint($('#pq'))}
+function tyHint(){const t=PQ.t;if(!t)return;t.err++;t.bad=1;t.pos++;tySkip();if(t.pos>=t.w.length){tyDone();return}tyPaint($('#pq'));tyIn()}
+function tyDone(){const t=PQ.t,i=t.i;tyPaint($('#pq'),true);tyUnfocus();PQ.t=null;PQ.queue.shift();
+  if(t.err===0){PQ.ok++;pqMark(i,true)}else{PQ.ko++;PQ.errs.add(i);if(t.err>2)PQ.queue.splice(Math.min(PQ.queue.length,3),0,i);else pqMark(i,true)}
+  setTimeout(()=>{if(PQ.on)pqNext()},t.err?900:420)}
+function tyPaint(el,fin){const t=PQ.t,it=PQ.items[t.i],n=PQ.items.length,done=n-PQ.queue.length,lv=CFG.pqlvl;let w='';
+  for(let k=0;k<t.w.length;k++){const c=t.w[k];if(k<t.pos)w+=`<b>${esc(c)}</b>`;else if(!tyL(c))w+=lv==='free'?'':`<i>${c===' '?'&nbsp;':esc(c)}</i>`;else if(lv==='guide')w+=`<i${k===t.pos?' class="cur"':''}>${esc(c)}</i>`;else if(lv==='mask')w+=`<i class="dot${k===t.pos?' cur':''}">${k===0?esc(c):'•'}</i>`;else if(k===t.pos){w+='<i class="cur">&nbsp;</i>';break}}
+  el.innerHTML=`<div class="pqP"><i style="width:${done/n*100}%"></i></div><div class="tyH">${esc(PQ.def.title)} · ${Math.min(done+1,n)} / ${n}</div><div class="tyW${fin?(t.err?' bad':' good'):''}">${w}</div>${fin&&LA(it.la)?`<div class="la">${esc(it.la)}</div>`:''}<div class="pqS"><span class="ok">✓ ${PQ.ok}</span><span class="ko">✗ ${PQ.ko}</span>${t.err&&!fin?`<span class="ko">${t.err} faute${t.err>1?'s':''}</span>`:''}<button data-p="hint" title="Révéler une lettre (Tab)">Indice</button><button data-p="skip" title="Voir la réponse et passer">Passer</button></div>`}
+canvas.addEventListener('pointerup',()=>{if(PQ.on&&PQ.t)tyIn()});
 function pqHover(i){if(PQ.hv===i)return;PQ.hv=i;if(PQ.def.bone){LMU.uLmSel.value=i;invalidate()}else setHover(i>=0?PQ.items[i].part:null)}
 // survol : la structure (ou la zone du relief) sous le pointeur, si elle fait partie du quiz
 function pqMap(h){if(!h||!h.part)return null;const d=PQ.def;
@@ -1220,10 +1247,10 @@ function pqClick(h){if(!PQ.started||!h||h.pq===undefined||!PQ.queue.length)retur
   if(i===want){PQ.ok++;PQ.queue.shift();pqMark(i,true);if(PQ.hv===i){PQ.hv=-1;if(PQ.def.bone)LMU.uLmSel.value=-1;else setHover(null)}}
   else{PQ.ko++;PQ.errs.add(want);pqMark(i,false);PQ.queue.push(PQ.queue.shift());toast('Non : c\'était « '+PQ.items[i].fr+' »')}
   pqNext()}
-function pqNext(){invalidate();if(!PQ.queue.length){const pc=Math.round(PQ.ok/Math.max(1,PQ.ok+PQ.ko)*100);PQB[PQ.def.id]=Math.max(PQB[PQ.def.id]||0,pc);LS.set('pq',PQB);pqPaint(true)}else pqPaint()}
+function pqNext(){invalidate();if(PQ.mode==='type'&&PQ.queue.length&&PQ.started&&!PQ.t){tyBegin();return}if(!PQ.queue.length){const pc=Math.round(PQ.ok/Math.max(1,PQ.ok+PQ.ko)*100);PQB[PQ.def.id]=Math.max(PQB[PQ.def.id]||0,pc);LS.set('pq',PQB);pqPaint(true)}else pqPaint()}
 function pqSkip(){if(!PQ.started||!PQ.queue.length)return;const w=PQ.queue.shift();PQ.ko++;PQ.errs.add(w);const it=PQ.items[w];toast('C\'était ici : « '+it.fr+' »');
   if(PQ.def.bone){LMU.uLmSel.value=w;flyTo(it.s,Math.max(PQ.def.bone.radius*.5,.03),it.n,450);setTimeout(()=>{LMU.uLmSel.value=-1;invalidate()},1400)}else{const p=it.part;p.flash=-1;apply(p);setTimeout(()=>{p.flash=0;apply(p)},1200)}
-  PQ.queue.push(w);pqNext()}
+  if(PQ.t){tyUnfocus();PQ.t=null}PQ.queue.push(w);pqNext()}
 function pqErrs(){const d=PQ.def,ix=[...PQ.errs];if(!ix.length)return;
   pqStart(d.bone?Object.assign({},d,{id:d.id+'|err',title:d.title+' · erreurs',lm:ix.map(i=>PQ.items[i].li)}):Object.assign({},d,{id:d.id+'|err',title:d.title+' · erreurs',parts:ix.map(i=>PQ.items[i].part)}))}
 // pastilles cachées derrière une structure : atténuées et non cliquables
@@ -1234,7 +1261,7 @@ function pqQuit(toNav){pqClear();PQ.on=INPQ=false;document.body.classList.remove
   if(PQ.cam)tw={t0:performance.now(),ms:500,p0:camera.position.clone(),p1:PQ.cam[0],q0:controls.target.clone(),q1:PQ.cam[1]};invalidate();if(toNav)navOpen('quiz')}
 $('#pqTop').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;if(b.dataset.p==='quit')pqQuit(true);else pqStart(PQ.def)});
 $('#pq').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const a=b.dataset.p;
-  if(a==='go'){PQ.started=true;pqPaint()}else if(a==='skip')pqSkip();else if(a==='errs')pqErrs();else if(a==='quit')pqQuit();else if(a==='nav')pqQuit(true);else pqStart(PQ.def)});
+  if(a==='go'){PQ.started=true;if(PQ.mode==='type')tyBegin();else pqPaint()}else if(a==='hint')tyHint();else if(a==='skip')pqSkip();else if(a==='errs')pqErrs();else if(a==='quit')pqQuit();else if(a==='nav')pqQuit(true);else pqStart(PQ.def)});
 $('#navBody').addEventListener('click',e=>{const f=e.target.closest('[data-nf]'),m=e.target.closest('[data-nh]');
   if(f){NAV.f=f.dataset.nf;navRender();return}
   if(m){if(NAV.last)pqStart(NAV.last);return}
