@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 
@@ -46,6 +47,7 @@ const SYS=[
  {id:'vaisseaux',label:'Cardiovasculaire',files:['vaisseaux.glb'],color:0xd9534f,rough:.36},
  {id:'nerfs',label:'Nerveux et organes des sens',files:['nerfs_seuls.glb'],extra:{Fascia:'nerfs_fascias.glb','White matter':'substance_blanche.glb'},color:0xead25c,rough:.5},
  {id:'visceres',label:'Viscères',files:['visceres_seuls.glb'],extra:{Fascia:'visceres_fascias.glb'},color:0xc98a7a,rough:.38},
+ {id:'corpsfemme',label:'Corps féminin (modèle complet)',files:['anatomy-female.glb'],color:0xe6d9bd,rough:.6},
  {id:'lymphatique',label:'Lymphatique',files:['lymphatique.glb','vaisseaux_lymphatiques.glb'],color:0x9ad68f,rough:.5},
  {id:'regions',label:'Peau et régions',files:['regions.glb'],color:0xd8a98b,rough:.6},
  {id:'insertions',label:'Insertions musculaires',files:['insertions.glb'],color:0xe0504a,rough:.6,internal:true},
@@ -298,7 +300,7 @@ const WHITEISH=new THREE.Color(0xf1e9d8);
 const applyAll=()=>parts.forEach(apply);
 
 const dracoL=new DRACOLoader().setDecoderPath(CDN+'libs/draco/gltf/');
-const gltfL=new GLTFLoader().setDRACOLoader(dracoL);
+const gltfL=new GLTFLoader().setDRACOLoader(dracoL).setMeshoptDecoder(MeshoptDecoder);
 let loading=0;
 function setLoader(f){const el=$('#loader');el.style.opacity=f>=1?0:1;el.style.width=(f>=1?100:Math.max(4,f*100))+'%';if(f>=1)setTimeout(()=>{if(!loading)el.style.width='0'},450)}
 function loadSys(s){
